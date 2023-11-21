@@ -333,6 +333,7 @@ pub fn serial_monitor(args: MonitorArgs, config: &Config) -> Result<()> {
 /// Convert the provided firmware image from ELF to binary
 pub fn save_elf_as_image(
     chip: Chip,
+    min_rev_full: u16,
     elf_data: &[u8],
     image_path: PathBuf,
     image_format: Option<ImageFormatKind>,
@@ -387,6 +388,7 @@ pub fn save_elf_as_image(
             target_app_partition,
             image_format,
             None,
+            min_rev_full,
             flash_mode,
             flash_size,
             flash_freq,
@@ -428,6 +430,7 @@ pub fn save_elf_as_image(
             None,
             image_format,
             None,
+            min_rev_full,
             flash_mode,
             flash_size,
             flash_freq,
@@ -544,6 +547,7 @@ pub fn flash_elf_image(
     flash_mode: Option<FlashMode>,
     flash_size: Option<FlashSize>,
     flash_freq: Option<FlashFrequency>,
+    min_rev_full: u16,
 ) -> Result<()> {
     // If the '--bootloader' option is provided, load the binary file at the
     // specified path.
@@ -567,6 +571,7 @@ pub fn flash_elf_image(
         flash_mode,
         flash_size,
         flash_freq,
+        min_rev_full,
         Some(&mut EspflashProgress::default()),
     )?;
     info!("Flashing has completed!");

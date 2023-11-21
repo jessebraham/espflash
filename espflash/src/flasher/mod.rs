@@ -783,6 +783,7 @@ impl Flasher {
         flash_mode: Option<FlashMode>,
         flash_size: Option<FlashSize>,
         flash_freq: Option<FlashFrequency>,
+        min_rev_full: u16,
         mut progress: Option<&mut dyn ProgressCallbacks>,
     ) -> Result<(), Error> {
         let image = ElfFirmwareImage::try_from(elf_data)?;
@@ -809,6 +810,7 @@ impl Flasher {
             target_app_partition,
             image_format,
             chip_revision,
+            min_rev_full,
             flash_mode,
             flash_size.or(Some(self.flash_size)),
             flash_freq,
@@ -869,6 +871,7 @@ impl Flasher {
         flash_mode: Option<FlashMode>,
         flash_size: Option<FlashSize>,
         flash_freq: Option<FlashFrequency>,
+        min_rev_full: u16,
         progress: Option<&mut dyn ProgressCallbacks>,
     ) -> Result<(), Error> {
         self.load_elf_to_flash_with_format(
@@ -880,6 +883,7 @@ impl Flasher {
             flash_mode,
             flash_size,
             flash_freq,
+            min_rev_full,
             progress,
         )
     }
