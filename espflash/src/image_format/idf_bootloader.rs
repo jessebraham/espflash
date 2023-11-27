@@ -2,6 +2,7 @@ use std::{borrow::Cow, io::Write, iter::once, mem::size_of};
 
 use bytemuck::{bytes_of, from_bytes};
 use esp_idf_part::{Partition, PartitionTable, Type};
+use log::warn;
 use sha2::{Digest, Sha256};
 
 use crate::{
@@ -287,6 +288,17 @@ fn merge_adjacent_segments(mut segments: Vec<CodeSegment>) -> Vec<CodeSegment> {
     for segment in segments {
         match merged.last_mut() {
             Some(last) if last.addr + last.size() == segment.addr => {
+                *last += segment.data();
+            }
+            Some(last) if segment.addr - last.size() - last.addr < 16 => {
+                warn!(
+                    "gap between segments 0x{:x}+0x{:x} and 0x{:x} of size {}",
+                    last.addr,
+                    last.size(),
+                    segment.addr,
+                    segment.addr - last.size() - last.addr
+                );
+                *last += &[0; 16][..(segment.addr - last.size() - last.addr) as usize];
                 *last += segment.data();
             }
             _ => {
