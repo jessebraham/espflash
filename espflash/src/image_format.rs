@@ -18,6 +18,7 @@ const ESP_MAGIC: u8 = 0xE9;
 const IROM_ALIGN: u32 = 0x10000;
 const SEG_HEADER_LEN: u32 = 8;
 const WP_PIN_DISABLED: u8 = 0xEE;
+const ESP_APP_DESC_MAGIC_WORD: u32 = 0xABCD_5432;
 
 /// Firmware header used by the ESP-IDF bootloader.
 ///
@@ -95,10 +96,30 @@ impl ImageHeader {
 
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 #[repr(C, packed)]
+#[doc(alias = "esp_image_segment_header_t")]
 struct SegmentHeader {
     addr: u32,
     length: u32,
 }
+
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[repr(C, packed)]
+#[doc(alias = "esp_app_desc_t")]
+struct AppDesc {
+    magic_word: u32,
+    secure_version: u32,
+    reserv1: [u32; 2],
+    version: [u8; 32],
+    project_name: [u8; 32],
+    time: [u8; 16],
+    date: [u8; 16],
+    idf_ver: [u8; 32],
+    app_elf_sha256: [u8; 32],
+    min_efuse_blk_rev_full: u16,
+    max_efuse_blk_rev_full: u16,
+    reserv2: [u32; 19],
+}
+
 
 /// Image format for ESP32 family chips using the second-stage bootloader from
 /// ESP-IDF
@@ -127,19 +148,20 @@ impl<'a> IdfBootloaderFormat<'a> {
         let partition_table = partition_table.unwrap_or_else(|| {
             params.default_partition_table(flash_settings.size.map(|v| v.size()))
         });
+
         let mut bootloader = if let Some(bytes) = bootloader {
             Cow::Owned(bytes)
         } else {
             Cow::Borrowed(params.default_bootloader)
         };
 
-        // fetch the generated header from the bootloader
+        // Fetch the generated header from the bootloader:
         let mut header: ImageHeader = *from_bytes(&bootloader[0..size_of::<ImageHeader>()]);
         if header.magic != ESP_MAGIC {
             return Err(Error::InvalidBootloader);
         }
 
-        // update the header if a user has specified any custom arguments
+        // Update the header if a user has specified any custom arguments:
         if let Some(mode) = flash_settings.mode {
             header.flash_mode = mode as u8;
         }
@@ -155,18 +177,16 @@ impl<'a> IdfBootloaderFormat<'a> {
             bytes_of(&header).iter().copied(),
         );
 
-        // re-calculate hash of the bootloader - needed since we modified the header
+        // Re-calculate hash of the bootloader - needed since we modified the header:
         let bootloader_len = bootloader.len();
         let mut hasher = Sha256::new();
         hasher.update(&bootloader[..bootloader_len - 32]);
         let hash = hasher.finalize();
         bootloader.to_mut()[bootloader_len - 32..].copy_from_slice(&hash);
 
-        // write the header of the app
-        // use the same settings as the bootloader
-        // just update the entry point
+        // Write the header of the app. Use the same settings as the bootloader,
+        // just update the entry point:
         header.entry = image.entry();
-
         header.wp_pin = WP_PIN_DISABLED;
         header.chip_id = params.chip_id;
         header.min_chip_rev_full = min_rev_full;
@@ -237,19 +257,17 @@ impl<'a> IdfBootloaderFormat<'a> {
         let hash = hasher.finalize();
         data.write_all(&hash)?;
 
-        let target_app_partition: &Partition =
-        // Use the target app partition if provided
-        if let Some(target_partition) = target_app_partition {
+        let target_app_partition: &Partition = if let Some(target_partition) = target_app_partition
+        {
+            // Use the target app partition if provided
             partition_table
                 .find(&target_partition)
                 .ok_or(Error::AppPartitionNotFound)?
         } else {
-
             // The default partition table contains the "factory" partition, and if a user
             // provides a partition table via command-line then the validation step confirms
             // that at least one "app" partition is present. We prefer the "factory"
             // partition, and use any available "app" partitions if not present.
-
             partition_table
                 .find("factory")
                 .or_else(|| partition_table.find_by_type(Type::App))
