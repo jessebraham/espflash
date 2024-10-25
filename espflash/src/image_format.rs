@@ -120,6 +120,25 @@ struct AppDesc {
     reserv2: [u32; 19],
 }
 
+impl Default for AppDesc {
+    fn default() -> Self {
+        // TODO: Populate any remaining required default values
+        Self {
+            magic_word: ESP_APP_DESC_MAGIC_WORD,
+            secure_version: Default::default(),
+            reserv1: Default::default(),
+            version: Default::default(),
+            project_name: Default::default(),
+            time: Default::default(),
+            date: Default::default(),
+            idf_ver: Default::default(),
+            app_elf_sha256: Default::default(),
+            min_efuse_blk_rev_full: u16::MIN,
+            max_efuse_blk_rev_full: u16::MAX,
+            reserv2: Default::default(),
+        }
+    }
+}
 
 /// Image format for ESP32 family chips using the second-stage bootloader from
 /// ESP-IDF
