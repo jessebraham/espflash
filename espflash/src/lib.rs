@@ -67,11 +67,11 @@ pub mod update {
     use log::info;
     use update_informer::{Check, registry::Crates};
 
+    const TIMEOUT: Duration = Duration::from_secs(5);
+
     /// Check for updates to the espflash crate.
     pub fn check_for_update(name: &str, version: &str) {
-        // By setting the interval to 0 seconds we invalidate the cache with each
-        // invocation and ensure we're getting up-to-date results
-        let informer = update_informer::new(Crates, name, version).interval(Duration::from_secs(0));
+        let informer = update_informer::new(Crates, name, version).timeout(TIMEOUT);
 
         if let Some(version) = informer.check_version().ok().flatten() {
             info!("🚀 A new version of {name} is available: {version}");
